@@ -1,0 +1,23 @@
+{
+    "24" : {
+        "ai_model" : "Resources/Models/pin_blast_hole.tflite",
+        "img_height_crop" : 62,
+        "img_width_crop" : 62,
+        "img_height_init_pixel" : 280,
+        "img_width_init_pixel" : 108,
+        "evaluations" : {
+            "0" : {
+                "label" : "Barreno Grande",
+                "result" : "OK",
+                "min_score" : 0.8,
+                "max_score" : 1
+            },
+            "1" : {
+                "label" : "Barreno Chico",
+                "result" : "NOK",
+                "min_score" : 0.8,
+                "max_score" : 1
+            }
+        }
+    }
+}
