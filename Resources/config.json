@@ -1,0 +1,18 @@
+{
+    "plc_ip_address": "10.235.34.114",
+    "out_plc_status_tag" : "Program:Station_10.OUT_PLC_STATUS",
+    "in_plc_status_tag" : "Program:Station_10.IN_PLC_STATUS",
+    "enable_ai_inspection_tag": "Program:Station_10.ENABLE_AI_INSPECTION",
+    "ai_trigger_tag" : "Program:Station_10.START_INSPECTION",
+    "result_to_plc_tag" : "Program:Station_10.AI_RESULT",
+    "cycle_running_tag" : "Program:Station_10.CYCLE_RUNNING_AUX",
+    "enable_save_images_tag" : "Program:Station_10.ENABLED_SAVE_IMAGES",
+    "part_number_tag" : "SAP_PN_STA_10",
+    "data_matrix_tag" : "Program:Station_10.Sta10_BARCODE",
+    "job_number_tag" : "Program:Station_10.CAMERA_JOB_NUMBER",
+    "ai_finished_tag" : "Program:Station_10.AI_FINISHED",
+    "camera_ip_address" : "10.235.34.8",
+    "camera_user" : "admin",
+    "camera_pass" : "ControlesBosch",
+    "path_to_move_images" : "Resources/Images"
+}
