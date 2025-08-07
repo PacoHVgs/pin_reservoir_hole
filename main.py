@@ -37,7 +37,6 @@ import csv
 
 from keras.models import load_model
 
-import tensorflow as tf
 
 app = Flask(__name__)
 config = {'CACHE_TYPE': 'simple'}
@@ -115,6 +114,7 @@ class view:
         self.init_tkinter()
         self.show_info_dialog('App Ready', 'Corriendo App...')
         self.display_minimized = False
+        self.first_load = False
         self.read_variables_from_file()
 
     def init_tkinter(self):
@@ -229,6 +229,13 @@ class view:
                                          font=('Bosch Sans Global', 14, 'bold'),
                                          fg="#ffffff",command=self.exit)
             self.exit_button.place(x=700, y=420, width=80, height=40)
+            
+            """Reload data button"""
+            self.load_data_button = tk.Button(self.root, bg= "#00629a", text="Cargar datos\nde configuración",
+                                                   font=('Bosch Sans Global', 10, 'bold'), activebackground= "#56b0ff",
+                                                   fg="#ffffff",command=self.read_variables_from_file)
+            self.load_data_button.place(x=560, y=420, width=120, height=40)
+
         except Exception as e:
             self.register_error('App Setting error','Error al abrir la app' + str(e), e)
             self.exit()
@@ -296,28 +303,34 @@ class view:
 
     def load_variables(self):
         self.img_height, self.img_width = 300, 300
+        self.camera_ip_address = self.variables_from_file["camera_ip_address"]
+        self.camera_user = self.variables_from_file["camera_user"]
+        self.camera_pass = self.variables_from_file["camera_pass"]
+        self.path_to_move_images = self.variables_from_file["path_to_move_images"]
+        self.project_id = self.variables_from_file["project_id"]
+        self.project_name = self.variables_from_file["project_name"]
         if not os.path.exists("Resources/ID.txt"):
             with open("Resources/ID.txt", "w") as new_file_id:
                 new_file_id.write("0")
                 new_file_id.close()
         if not os.path.exists("Resources/results_db.csv"):
-            text_to_save = "Image ID;Part Number;Job Number;Result; OK/NOK; Result ID; AI Result; Date"
+            text_to_save = "Project Name;Image ID;File Name;Part number;Result;OK/NOK;AI Result;Date;Model Name"
             with open("Resources/results_db.csv", "w", newline="") as new_file_results:
                 writer = csv.writer(new_file_results)
                 writer.writerow(text_to_save.strip().split(","))
-        self.camera_ip_address = self.variables_from_file["camera_ip_address"]
-        self.camera_user = self.variables_from_file["camera_user"]
-        self.camera_pass = self.variables_from_file["camera_pass"]
-        self.path_to_move_images = self.variables_from_file["path_to_move_images"]
-        os.makedirs(self.path_to_move_images, exist_ok=True)
 
-        self.root.after(150, self.start_thread)
+        if not self.first_load:
+            self.root.after(150, self.start_thread)
+        else:
+            self.show_info_dialog("Reload config data", "Se cargaron los datos del configuración correctamente")
+            # self.root.after(150, self.main_program)
 
     def start_thread(self):
         self.read_status_from_plc = read_status_from_plc(self.update_status_indicator_thread)
         self.send_status_to_plc = send_status_to_plc()
         self.read_status_from_plc.start()
         self.send_status_to_plc.start()
+        self.first_load = True
         self.root.after(150, self.main_program)
 
     def main_program(self):
@@ -394,8 +407,19 @@ class view:
     def load_part_number_setup(self):
         try:
             self.read_part_number_setup()
-            self.setup_part_number = self.setup_variables[str(self.job_number)] # use only in production
-            # self.setup_part_number = self.setup_variables[str(10)]
+            primary_key = 0
+            if isinstance(self.setup_variables, dict):
+                for k, v in self.setup_variables.items():
+                    if k == self.part_number:
+                        primary_key = 1
+                        self.setup_part_number = self.setup_variables[self.part_number]
+                if primary_key == 0:
+                    for k, v in self.setup_variables.items():
+                        if k == self.part_number:
+                            primary_key = 3
+                            self.setup_part_number = self.setup_variables[str(self.job_number)]
+                if primary_key == 0:
+                    self.setup_part_number = self.setup_variables["24"]
             self.model_file_path = self.setup_part_number["ai_model"]
             self.img_height_crop = self.setup_part_number["img_height_crop"]
             self.img_width_crop = self.setup_part_number["img_width_crop"]
@@ -405,10 +429,6 @@ class view:
             self.img_width_end_pixel = self.img_width_init_pixel + self.img_width_crop
             self.evaluation_model = self.setup_part_number["evaluations"]
             self.model = load_model(self.model_file_path)
-            # self.interpreter = tf.lite.Interpreter(self.model_file_path)
-            # self.interpreter.allocate_tensors()
-            # self.input_details = self.interpreter.get_input_details()
-            # self.output_details = self.interpreter.get_output_details()
 
         except Exception as e:
             self.register_error('Load Part Number Setup Error','Error: ' + str(e),'Error: '+str(e))
@@ -542,23 +562,24 @@ class view:
     def save_results(self):
         self.read_id()
         self.get_date_time()
-        self.text_to_save = (str(self.img_id).zfill(6) + ";" + self.part_number + ";" + str(self.job_number)
-                             + ";" + self.text_result + self.result_value + ";" + str(self.max_idx) + ";" +
-                             str(f"{self.max_score:.5f}") +";" + self.current_date + ";")
+        usn_id = (str(self.img_id).zfill(6) + self.project_id + self.usn_date)
+        model_file_name = os.path.basename(self.model_file_path)
+        self.path_to_save = (usn_id + "_" + self.part_number +
+                             "_" + self.text_result + "_" + self.result_value)
+        self.text_to_save = (self.project_name + ";" + usn_id + ";" + self.path_to_save + ";" + self.part_number +
+                             ";" + self.text_result + ";" + self.result_value + ";" + str(self.max_value) + ";" +
+                             str(datetime.datetime.now()) +";" + model_file_name)
         with open("Resources/results_db.csv", "a", newline="") as append_file:
             writer = csv.writer(append_file)
             writer.writerow(self.text_to_save.strip().split(","))
-
-        self.path_to_save = (str(self.img_id).zfill(6) + "_" + str(self.job_number).zfill(3) +
-                             "_" + self.text_result + self.result_value + "_" +
-                             str(self.max_idx).zfill(3) + "_" + str(f"{self.max_score:.5f}") +
-                             "_" + self.current_date2)
         image_complete_name = self.path_to_save + ".jpg"
         image_cropped_name = self.path_to_save + "_cropped.jpg"
         part_number_path = os.path.join(self.path_to_move_images, self.part_number)
-        completed_path = os.path.join(part_number_path, "Complete")
+        completed_path_origin = os.path.join(part_number_path, "Complete")
+        completed_path = os.path.join(completed_path_origin, self.result_value)
         os.makedirs(completed_path, exist_ok=True)
-        cropped_path = os.path.join(part_number_path, "Cropped")
+        cropped_path_origin = os.path.join(part_number_path, "Cropped")
+        cropped_path = os.path.join(cropped_path_origin, self.result_value)
         os.makedirs(cropped_path, exist_ok=True)
         self.path_to_move_image_complete = os.path.join(completed_path, image_complete_name)
         self.path_to_move_image_cropped = os.path.join(cropped_path, image_cropped_name)
@@ -599,6 +620,7 @@ class view:
         self.current_date = (current_year + "_" + current_month + "_" + current_day + "_" +
                             current_hour  + ":" + current_minute + ":" + current_second)
         self.current_date2 = date_completed + time_completed
+        self.usn_date = current_day + current_month + current_year_2dig
 
     def remove_images(self):
         if self.enable_save_images:

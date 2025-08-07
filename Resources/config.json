@@ -5,7 +5,7 @@
     "enable_ai_inspection_tag": "Program:Station_10.ENABLE_AI_INSPECTION",
     "ai_trigger_tag" : "Program:Station_10.START_INSPECTION",
     "result_to_plc_tag" : "Program:Station_10.AI_RESULT",
-    "cycle_running_tag" : "Program:Station_10.CYCLE_RUNNING_AUX",
+    "cycle_running_tag" : "Program:Station_10.CYCLE_RUNNING",
     "enable_save_images_tag" : "Program:Station_10.ENABLED_SAVE_IMAGES",
     "part_number_tag" : "SAP_PN_STA_10",
     "data_matrix_tag" : "Program:Station_10.Sta10_BARCODE",
@@ -14,5 +14,7 @@
     "camera_ip_address" : "10.235.34.8",
     "camera_user" : "admin",
     "camera_pass" : "ControlesBosch",
-    "path_to_move_images" : "Resources/Images"
+    "path_to_move_images" : "Resources/Images",
+    "project_id" : "001",
+    "project_name" : "MC_ATC_TMC8L6_St10_Pin"
 }

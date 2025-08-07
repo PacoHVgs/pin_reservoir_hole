@@ -1,6 +1,6 @@
 {
     "24" : {
-        "ai_model" : "Resources/Models/pin_blast_hole.tflite",
+        "ai_model" : "Resources/Models/pin_blast_hole.h5",
         "img_height_crop" : 62,
         "img_width_crop" : 62,
         "img_height_init_pixel" : 280,
@@ -14,6 +14,90 @@
             },
             "1" : {
                 "label" : "Barreno Chico",
+                "result" : "NOK",
+                "min_score" : 0.8,
+                "max_score" : 1
+            }
+        }
+    },
+    "0204862209" : {
+        "ai_model" : "Resources/Models/0204862209.h5",
+        "img_height_crop" : 62,
+        "img_width_crop" : 62,
+        "img_height_init_pixel" : 285,
+        "img_width_init_pixel" : 106,
+        "evaluations" : {
+            "0" : {
+                "label" : "Barreno Grande",
+                "result" : "OK",
+                "min_score" : 0.8,
+                "max_score" : 1
+            },
+            "1" : {
+                "label" : "Barreno Chico",
+                "result" : "NOK",
+                "min_score" : 0.8,
+                "max_score" : 1
+            }
+        }
+    },
+    "0204855667" : {
+        "ai_model" : "Resources/Models/0204862209.h5",
+        "img_height_crop" : 62,
+        "img_width_crop" : 62,
+        "img_height_init_pixel" : 285,
+        "img_width_init_pixel" : 106,
+        "evaluations" : {
+            "0" : {
+                "label" : "Barreno Grande",
+                "result" : "NOK",
+                "min_score" : 0.8,
+                "max_score" : 1
+            },
+            "1" : {
+                "label" : "Barreno Chico",
+                "result" : "OK",
+                "min_score" : 0.8,
+                "max_score" : 1
+            }
+        }
+    },
+    "0694000091" : {
+        "ai_model" : "Resources/Models/0694000091.h5",
+        "img_height_crop" : 62,
+        "img_width_crop" : 62,
+        "img_height_init_pixel" : 285,
+        "img_width_init_pixel" : 106,
+        "evaluations" : {
+            "0" : {
+                "label" : "Barreno",
+                "result" : "OK",
+                "min_score" : 0.8,
+                "max_score" : 1
+            },
+            "1" : {
+                "label" : "Sin Barreno",
+                "result" : "NOK",
+                "min_score" : 0.8,
+                "max_score" : 1
+            }
+        }
+    },
+    "0204865LU7" : {
+        "ai_model" : "Resources/Models/pin_blast_hole.h5",
+        "img_height_crop" : 62,
+        "img_width_crop" : 62,
+        "img_height_init_pixel" : 240,
+        "img_width_init_pixel" : 70,
+        "evaluations" : {
+            "0" : {
+                "label" : "Barreno",
+                "result" : "OK",
+                "min_score" : 0.8,
+                "max_score" : 1
+            },
+            "1" : {
+                "label" : "Sin Barreno",
                 "result" : "NOK",
                 "min_score" : 0.8,
                 "max_score" : 1
