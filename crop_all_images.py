@@ -2,7 +2,7 @@ import cv2
 import os
 
 path = "0694000197/Complete"
-new_path = "0694000197/Cropped"
+new_path = "0694000197/Cropped_New"
 
 os.makedirs(new_path, exist_ok=True)
 

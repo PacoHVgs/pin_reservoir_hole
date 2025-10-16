@@ -11,6 +11,8 @@ import time
 
 import os
 
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3" 
+
 import threading
 
 import sys
@@ -35,14 +37,9 @@ import gc
 
 import csv
 
-from keras.models import load_model
-
-
-app = Flask(__name__)
-config = {'CACHE_TYPE': 'simple'}
-cache = Cache(app, config==config)
-
 system_name = os.name
+
+import tensorflow as tf
 
 logging.basicConfig(filename="logger.log", level=logging.ERROR,
                     format="%(asctime)s - %(levelname)s- %(message)s",
@@ -121,12 +118,12 @@ class view:
         try:
             """Initialitation of main screen"""
             self.root.title("Pin Reservoir Hole TCM8L6")
-            self.root.overrideredirect(True)
+            # self.root.overrideredirect(True)
             self.root.geometry("800x480+0+0")
             self.root.protocol("WM_DELETE_WINDOW", self.exit)
             if system_name == "nt":
                 self.root.iconbitmap("Resources/AI.ico")
-            # self.root.resizable(0,0)
+            self.root.resizable(0,0)
             self.root.configure(background='#ffffff')
 
             """PLC Status"""
@@ -313,12 +310,6 @@ class view:
             with open("Resources/ID.txt", "w") as new_file_id:
                 new_file_id.write("0")
                 new_file_id.close()
-        if not os.path.exists("Resources/results_db.csv"):
-            text_to_save = "Project Name;Image ID;File Name;Part number;Result;OK/NOK;AI Result;Date;Model Name"
-            with open("Resources/results_db.csv", "w", newline="") as new_file_results:
-                writer = csv.writer(new_file_results)
-                writer.writerow(text_to_save.strip().split(","))
-
         if not self.first_load:
             self.root.after(150, self.start_thread)
         else:
@@ -347,7 +338,6 @@ class view:
                 self.assign_path_image()
                 self.start_ai()
                 self.write_to_plc()
-                cache.clear()
                 gc.collect()
 
         else:
@@ -421,14 +411,25 @@ class view:
                 if primary_key == 0:
                     self.setup_part_number = self.setup_variables["24"]
             self.model_file_path = self.setup_part_number["ai_model"]
-            self.img_height_crop = self.setup_part_number["img_height_crop"]
-            self.img_width_crop = self.setup_part_number["img_width_crop"]
-            self.img_height_init_pixel = self.setup_part_number["img_height_init_pixel"]
-            self.img_width_init_pixel = self.setup_part_number["img_width_init_pixel"]
-            self.img_height_end_pixel = self.img_height_init_pixel + self.img_height_crop
-            self.img_width_end_pixel = self.img_width_init_pixel + self.img_width_crop
+            height_data = self.setup_part_number["img_height"]
+            width_data = self.setup_part_number["img_width"]
+            self.img_height_crop = height_data["img_height_crop"]
+            self.start_roi_y_h = height_data["start_roi_y_h"]
+            self.end_roi_y_h = height_data["end_roi_y_h"]
+            self.start_roi_y_w = height_data["start_roi_y_w"]
+            self.end_roi_y_w = height_data["end_roi_y_w"]
+            self.y_constant = height_data["y_constant"]
+            self.img_width_crop = width_data["img_width_crop"]
+            self.start_roi_x_h = width_data["start_roi_x_h"]
+            self.end_roi_x_h = width_data["end_roi_x_h"]
+            self.start_roi_x_w = width_data["start_roi_x_w"]
+            self.end_roi_x_w = width_data["end_roi_x_w"]
+            self.x_constant = width_data["x_constant"]
             self.evaluation_model = self.setup_part_number["evaluations"]
-            self.model = load_model(self.model_file_path)
+            self.interpreter = tf.lite.Interpreter(self.model_file_path)
+            self.interpreter.allocate_tensors()
+            self.input_details = self.interpreter.get_input_details()
+            self.output_details = self.interpreter.get_output_details()
 
         except Exception as e:
             self.register_error('Load Part Number Setup Error','Error: ' + str(e),'Error: '+str(e))
@@ -468,18 +469,31 @@ class view:
         image = cv2.imread("image.jpg")
         image_rotated = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
         cv2.imwrite("image.jpg", image_rotated)
-        image_processed = image_rotated[self.img_height_init_pixel:self.img_height_end_pixel,
-                                          self.img_width_init_pixel:self.img_width_end_pixel]
+        image_gray = cv2.imread("image.jpg", cv2.IMREAD_GRAYSCALE)
+        roi_y = image_gray[self.start_roi_y_h:self.end_roi_y_h, self.start_roi_y_w:self.end_roi_y_w]
+        profile_y = np.mean(roi_y, axis=1)
+        gradient_y = np.diff(profile_y)
+        pos_y = np.argmax(gradient_y)
+        img_height_init_pixel = self.start_roi_y_h + pos_y + self.y_constant
+        img_height_end_pixel = img_height_init_pixel + self.img_height_crop
+        roi_x = image_gray[(pos_y + self.start_roi_x_h): (pos_y + self.end_roi_x_h), self.start_roi_x_w:self.end_roi_x_w]
+        profile_x = np.mean(roi_x, axis=0)
+        gradient_x = np.diff(profile_x)
+        pos_x = np.argmax(gradient_x)
+        img_width_init_pixel = self.start_roi_x_w + pos_x + self.x_constant
+        img_width_end_pixel = img_width_init_pixel + self.img_width_crop
+        image_processed = image_rotated[img_height_init_pixel:img_height_end_pixel,
+                                          img_width_init_pixel:img_width_end_pixel]
         cv2.imwrite("image_cropped.jpg", image_processed)
-        image_to_predict = cv2.imread("image_cropped.jpg")
+        image_to_predict = cv2.imread("image_cropped.jpg", cv2.IMREAD_GRAYSCALE)
         image_normalized = (np.asanyarray(image_to_predict)) / 255
-        self.image_expanded = np.expand_dims(image_normalized, axis=0).astype(np.float32)
+        image_with_channel = np.expand_dims(image_normalized, axis=-1)
+        self.image_expanded = np.expand_dims(image_with_channel, axis=0).astype(np.float32)
 
     def prediction(self):
-        # self.interpreter.set_tensor(self.input_details[0]["index"], self.image_expanded)
-        # self.interpreter.invoke()
-        # output_raw = self.interpreter.get_tensor(self.output_details[0]["index"])
-        output_raw = self.model.predict(self.image_expanded)
+        self.interpreter.set_tensor(self.input_details[0]["index"], self.image_expanded)
+        self.interpreter.invoke()
+        output_raw = self.interpreter.get_tensor(self.output_details[0]["index"])
         output = np.squeeze(output_raw)
         self.max_value = None
         self.max_idx = -1
@@ -500,7 +514,10 @@ class view:
             else:
                 self.ai_result = 3
         else:
-            self.ai_result = 2
+            if (self.max_value >= self.min_score) and (self.max_value <= self.max_score):
+                self.ai_result = 2
+            else:
+                self.ai_result = 3
 
     def update_main_screen(self):
         if self.ai_result == 1:
@@ -509,7 +526,7 @@ class view:
             self.text_result = self.result_label
         elif self.ai_result == 2:
             frame_color = "#ff0000"
-            text_color = "#ffffff"
+            text_color = "#050505"
             self.text_result = self.result_label
         elif self.ai_result == 3:
             frame_color = "#dcdc00"
@@ -569,6 +586,11 @@ class view:
         self.text_to_save = (self.project_name + ";" + usn_id + ";" + self.path_to_save + ";" + self.part_number +
                              ";" + self.text_result + ";" + self.result_value + ";" + str(self.max_value) + ";" +
                              str(datetime.datetime.now()) +";" + model_file_name)
+        if not os.path.exists("Resources/results_db.csv"):
+            text_to_save = "Project Name;Image ID;File Name;Part number;Result;OK/NOK;AI Result;Date;Model Name"
+            with open("Resources/results_db.csv", "w", newline="") as new_file_results:
+                writer = csv.writer(new_file_results)
+                writer.writerow(text_to_save.strip().split(","))
         with open("Resources/results_db.csv", "a", newline="") as append_file:
             writer = csv.writer(append_file)
             writer.writerow(self.text_to_save.strip().split(","))
